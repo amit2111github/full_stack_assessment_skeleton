@@ -9,9 +9,11 @@
 - for each section you'll find that it has **problem**, **task**, **solution** sections:
 
 - **problem** :
+
   - explains the core problem we're trying to solve, and maybe some context
 
 - **task** :
+
   - gives a list of tasks that MUST be accomplished by you
   - also tells you what are the must-have features in your solution
   - tasks marked with [<ins>**extra**</ins>] are not necessary, consider them as bonus problems
@@ -22,9 +24,10 @@
 > [!IMPORTANT]
 > please stick to the techstack mentioned; it's a very basic project and does not require an arsenal of libraries, so do not use any other libraries, frameworks, etc.. unless explicitly mentioned
 
-  - however you can use simple libraries that are not mentioned, granted they don't significantly alter the task or do the work for you and that you document the decision-making properly as explained below
+- however you can use simple libraries that are not mentioned, granted they don't significantly alter the task or do the work for you and that you document the decision-making properly as explained below
 
 - **solution** :
+
   - once you're done solving the exercise or a part of it, you **MUST** document your solution in this section under the appropriate part of the exercise you solved, so the for the database problem you should edit the solution section under [database](#1-database) only
 
   - the idea is to document mainly 2 things:
@@ -58,8 +61,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
 > [!WARNING]
 > do not change credentials, db name and any configuration, this just adds unnecessary complexity
 
-> [!TIP]
-> [mysql docker image docs](https://hub.docker.com/_/mysql)
+> [!TIP] > [mysql docker image docs](https://hub.docker.com/_/mysql)
 
 ![mysql creds](images/mysql_creds.png)
 
@@ -72,7 +74,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
 <summary>preview of data in `home_db.user_home` table</summary>
 
 | **username** | **email**          | **street_address**       | **state**     | **zip** | **sqft** | **beds** | **baths** | **list_price** |
-|--------------|--------------------|--------------------------|---------------|---------|----------|----------|-----------|----------------|
+| ------------ | ------------------ | ------------------------ | ------------- | ------- | -------- | -------- | --------- | -------------- |
 | user7        | user7@example.org  | 72242 Jacobson Square    | Arizona       | 05378   | 2945.89  | 1        | 3         | 791204.0       |
 | user7        | user7@example.org  | 75246 Cumberland Street  | Arizona       | 08229   | 2278.71  | 2        | 1         | 182092.0       |
 | user10       | user10@example.org | 72242 Jacobson Square    | Arizona       | 05378   | 2945.89  | 1        | 3         | 791204.0       |
@@ -89,12 +91,14 @@ docker-compose -f docker-compose.initial.yml up --build -d
 ### problem
 
 - as you can see we have data relating users and homes
+
   - each user is identified by its username, i.e., if two rows have the same username, they're talking about the same user
   - similarly each home is identified by its street_address
 
 - this data relates users on our website and which homes they are interested in
 
 - upon basic inspection you can observe the following:
+
   - one user may be related to multiple homes
   - also the same home may be related to multiple users
 
@@ -105,7 +109,8 @@ docker-compose -f docker-compose.initial.yml up --build -d
 ### task
 
 - refactor the data into a _reasonably_ normalized set of tables
-- ensure that the relationship between tables is represented properly using foreign keys -> primary keys  references (as they are usually in relational DBs)
+- ensure that the relationship between tables is represented properly using foreign keys -> primary keys references (as they are usually in relational DBs)
+
   - you'll need to create _atleast_ 2 tables:
 
     - `user` : to store `user` attributes: `username`, `email`
@@ -118,6 +123,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
 - put it inside the `sql` directory under the root directory
 
 - make sure that:
+
   - the SQL script you have created, takes the DB from its initial state (as it was when you started the docker container for the first time) to the "solved" state, when it's executed
 
 - **techstack instructions**
@@ -129,7 +135,69 @@ docker-compose -f docker-compose.initial.yml up --build -d
 
 ### solution
 
-> explain briefly your solution for this problem here
+So I first normalized the table by splitting table user_home into user table with colums `(id , username , email)` and home table with colums assocated with it and user_interest table to store many-many (many to many) relation between user and home.
+
+for creation of user table
+
+```
+CREATE TABLE `user` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `username` varchar(100) DEFAULT NULL,
+    `email` varchar(100) DEFAULT NULL
+);
+```
+
+for creation of home table
+
+```
+CREATE TABLE `home` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `street_address` varchar(255) DEFAULT NULL,
+    `state` varchar(50) DEFAULT NULL,
+    `zip` varchar(10) DEFAULT NULL,
+    `sqft` float DEFAULT NULL,
+    `beds` int DEFAULT NULL,
+    `baths` int DEFAULT NULL,
+    `list_price` float DEFAULT NULL
+);
+
+```
+
+user interesr table creation
+
+```
+CREATE TABLE `user_interest` (
+    `user_id` INT,
+    `home_id` INT,
+    PRIMARY KEY (`user_id`, `home_id`),
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`),
+    FOREIGN KEY (`home_id`) REFERENCES `home`(`id`)
+);
+
+```
+
+and then populating them with data from user_home (inital table).
+
+```
+INSERT INTO `user` (`username`, `email`) SELECT DISTINCT `username`, `email` FROM `user_home`;
+
+
+INSERT INTO `home` (`street_address`, `state`, `zip`, `sqft`,`beds`,`baths`,`list_price`) SELECT DISTINCT `street_address`, `state`, `zip`, `sqft`,`beds`,`baths`,`list_price` FROM `user_home`;
+
+INSERT INTO `user_interest` (`user_id`, `home_id`) SELECT u.id, h.id FROM (SELECT DISTINCT `username`, `email`, `street_address` FROM `user_home`) uh JOIN `user` u ON uh.username = u.username JOIN `home` h ON uh.street_address = h.street_address;
+
+```
+
+Doing this will normalize the data. and running
+
+`docker-compose -f docker-compose.final.yml up --build -d`
+
+will create the container with all the data
+
+> [!NOTE]
+> if mysql is already using port 3306 then make sure to stop it using
+
+`sudo systemctl stop mysql`
 
 ## 2. React SPA
 
@@ -145,6 +213,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
 ### task
 
 - **homes for user page**
+
   - create a page to show all homes related to a particular user
   - there should be a single-select dropdown at top, to pick the user for whom we want to view the related homes
   - and below that the related homes should populate in cards
@@ -154,7 +223,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
   - make sure that:
     - page is responsive as shown
     - we don't expect any fancy UI, barebones is just fine, but it should be functional
-  
+
 - **edit user functionality**
 
   - each home card has an `Edit User` button attached, this should show a modal on click, this is the `Edit User Modal`:
@@ -167,7 +236,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
     - the users related to that home must be updated in the DB
     - the modal should close and the changes should reflect on the `homes for user page`
     - so for eg: if we had picked `user1` on `homes for user page` then clicked on `Edit User` for any home there and **unchecked** `user1` in the modal and saved, then upon closing of the modal, the home we clicked on previously, should NO longer be visible for `user1`, but should be visible for any other user for whom the checkbox was checked on `Save`
-  
+
   ![edit user modal](images/edit_user_modal.png)
 
   - make sure:
@@ -183,13 +252,15 @@ docker-compose -f docker-compose.initial.yml up --build -d
   - to create the above components / pages, you'll fetch data from [backend APIs](#3-backend-api-development-on-node)
 
   - make sure you're handling data-fetching properly by _preferrably_ using a data-fetching-library:
+
     - show a loading spinner/skeleton while an API request is progress
     - gracefully handle errors if the API calls error out
-    - [<ins>**extra**</ins>] cache API responses, to improve performance 
+    - [<ins>**extra**</ins>] cache API responses, to improve performance
 
   - as discussed below it's preferred to use a data fetching library to handle these problems properly
 
 - **techstack instructions**
+
   - JS frameworks:
 
     - [Vite (recommended)](https://vitejs.dev/guide/) or [Create React App](https://github.com/facebook/create-react-app)
@@ -201,10 +272,13 @@ docker-compose -f docker-compose.initial.yml up --build -d
     - use no other css frameworks, component libs, etc..
 
   - State Management
+
     - use [Redux Toolkit](https://redux-toolkit.js.org/) where appropriate for state-management
 
   - Data Fetching
+
     - **preferred approach** is to use one of the following data-fetching libraries:
+
       - [RTK Query](https://redux-toolkit.js.org/tutorials/rtk-query)
       - [TanStack Query](https://tanstack.com/query/latest)
 
@@ -220,7 +294,39 @@ docker-compose -f docker-compose.initial.yml up --build -d
 
 ### solution
 
-> explain briefly your solution for this problem here
+### How to Run?
+
+Go to frontend repo using `cd ./frontend` <br/>
+run `npm install`<br/>
+run `npm run dev`<br/>
+
+### Features Implemented
+
+## 1. Homes for User Page
+
+The page contains a single-select dropdown at the top, allowing the user to pick a specific user and when user select any user from the dropdown then i am making a fetch request to get all homes that user is intrested in
+And this Home page is fully responsive.
+
+## 2. Edit User Functionality
+
+Each home card has an Edit User button that opens a modal.
+And this Modal has checkboxes with users who are intrested in that home have their corresponding checkbox checked.
+Users can toggle these checkboxes to add or remove users from a home.
+Upon clicking Save, the users related to that home are updated in the database, and the changes are reflected on the homes page , for this i am making a put request to backend with (ids : [] and homeId)
+Clicking Cancel the modal would close the modal without applying any changes.
+
+### Data Fetching
+
+for Data-fetching is handled using TanStack Query, which manages loading, caching, and error handling.
+
+### State Management
+
+I used Redux Toolkit for managing the global state, ensuring efficient updates and re-renders when users or homes are modified. I created in particular 4 slices viz.
+
+1. home slice for storing home for which modal is opened.
+2. modal slice for handling modal data.
+3. page slice for navigation
+4. user slice for storing user selected from dropdown.
 
 ## 3. Backend API development on Node
 
@@ -233,17 +339,21 @@ docker-compose -f docker-compose.initial.yml up --build -d
 - create **REST APIs**, we'll need the following APIs:
 
   - **/user/find-all**
+
     - should return all users from DB
 
   - **/home/find-by-user**
+
     - should return all homes related to a user
     - this is consumed in UI to show home cards
 
   - **/user/find-by-home**
+
     - should return all users related to a home
     - this is consumed in UI, in the `Edit Users` modal
 
   - **/home/update-users**
+
     - this API should take in the new bunch of users (from the modal after `Save`) and the home for which the `Edit Users` button was clicked
     - this API should mutate the DB, to reflect the new set of users related to the home
 
@@ -253,7 +363,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
     - should only use JSON as the interface
     - if possible, sanitize the data sent in the request
     - the `/home/update-users` API is idempotent
-  
+
 - **[<ins>extra</ins>] add pagination**
 
   - for `/home/find-by-user` API add pagination support:
@@ -271,6 +381,7 @@ docker-compose -f docker-compose.initial.yml up --build -d
   - Interacting with DB:
 
     - use one of these ORMs, this the **preferred approach**:
+
       - [TypeORM (recommended)](https://typeorm.io/)
       - [Prisma](https://www.prisma.io/docs/getting-started)
       - [Sequelize](https://sequelize.org/docs/v6/getting-started/)
@@ -281,7 +392,49 @@ docker-compose -f docker-compose.initial.yml up --build -d
 
 ### solution
 
-> explain briefly your solution for this problem here
+How to Run?
+
+Go to backend repo using `cd ./backend`<br/>
+run npm install <br/>
+run `npm start` <br/>
+
+## Home Controller
+
+1. `GET /home/find-by-user`<br/>
+   Description: Retrieves all homes related to a specific user, with pagination support.<br/>
+   Parameters: <br/>
+
+   - `userId` (URL parameter): ID of the user. <br/>
+   - `page` (Query parameter): Page number for pagination.<br/>
+     Response: JSON array of homes associated with the given user.<br/>
+     Pagination: Supports a page size of 50 homes per page.<br/>
+
+2. `PUT /home/update-users` <br/>
+   Description: Updates the list of users interested in a specific home. <br/>
+   Request Body: <br/>
+   - `homeId` (Integer): ID of the home. <br/>
+   - `userIds` (Array of Integers): List of user IDs to be associated with the home. <br/>
+     Response: Success message indicating the update status. <br/>
+     Validation: Ensures that the userIds array is not empty and performs a transaction to add or remove users as needed. <br/>
+
+## User Controller
+
+1. `GET /user/find-all` <br/>
+   Description: Retrieves all users. <br/>
+   Response: JSON array of all users. <br/>
+
+2. `GET /user/find-by-home` <br/>
+   Description: Retrieves all users related to a specific home. <br/>
+   Parameters: <br/>
+   - `homeId` (URL parameter): ID of the home. <br/>
+   - Response: JSON array of users, with an additional interested flag indicating whether each user is interested in the home. <br/>
+
+## Implementation Details
+
+1. Prisma ORM: Used for database interaction, providing an easy-to-use API for querying and modifying data. <br/>
+2. Express.js: Handles routing and middleware for efficient request handling. <br/>
+3. Pagination: Implemented for the /home/find-by-user route to handle large datasets. <br/>
+4. Transactional Updates: Ensures atomic updates for user-home relationships using Prisma's transaction capabilities. <br/>
 
 ## Submission Guidelines
 
@@ -331,4 +484,3 @@ docker-compose -f docker-compose.initial.yml down
 ### submit the fork url
 
 - when you've committed everything needed to your github fork, please share the url with us, so we can review your submission
-  
