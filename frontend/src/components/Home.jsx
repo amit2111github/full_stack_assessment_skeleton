@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
-import Loader from './ui/loader';
 import Modal from './Modal';
 import { getAllHomeForUser } from '@/lib/api';
 import PaginationCompnent from './Pagination';
+import HomeSkeleton from './ui/homeskeleton';
 
 function Home() {
   const user = useSelector((state) => state.user);
@@ -13,7 +13,7 @@ function Home() {
     queryFn: async () => getAllHomeForUser(user, page),
   });
   if (isPending) {
-    return <Loader />;
+    return <HomeSkeleton />;
   }
   if (data && data.error) {
     console.log(data.error);
@@ -27,10 +27,13 @@ function Home() {
     );
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 p-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 p-2 gap-4">
         {data &&
           data.data?.map(({ home }) => (
-            <div className="relative shadow-xl rounded p-6" key={home.id}>
+            <div
+              className="relative h-[240px] shadow-xl rounded p-6"
+              key={home.id}
+            >
               <h2 className="font-bold">{home.street_address}</h2>
               <div className="text-[13px] mb-4 pb-[10px]">
                 <p>List Price: ${home.list_price}</p>
